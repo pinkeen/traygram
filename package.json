@@ -1,0 +1,24 @@
+{
+    "name": "traygram",
+    "version": "1.0.0",
+    "description": "Instagram wrapper for desktop with tray icon",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "pack": "electron-builder --dir",
+        "dist": "electron-builder"
+    },
+    "author": "Filip Sobalski",
+    "license": "MIT",
+    "devDependencies": {
+        "electron": "^3.0.10",
+        "electron-builder": "^20.38.2"
+    },
+    "build": {
+        "productName": "TrayGram",
+        "appId": "in.obsrv.traygram",
+        "mac": {
+            "category": "public.app-category.social-networking"
+        }
+    }
+}
