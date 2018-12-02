@@ -18,13 +18,19 @@
         "productName": "TrayGram",
         "copyright": "Copyright © 2018 ${author}",
         "appId": "in.obsrv.traygram",
+        "files": ["**/*", "assets/*"],
         "mac": {
             "target": "dmg",
             "category": "public.app-category.social-networking",
-            "publish": ["github"]
+            "publish": ["github"],
+            "icon": "assets/icon.png",
+            "extendInfo": {
+                "LSUIElement": 1
+            }
         },
         "win": {
-            "target": "nsis"
+            "target": "nsis",
+            "icon": "assets/icon.png"
         }
     }
 }

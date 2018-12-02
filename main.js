@@ -1,4 +1,4 @@
-const {app, session, BrowserWindow, Menu, Tray} = require('electron');
+const {app, session, nativeImage, BrowserWindow, Menu, Tray} = require('electron');
 
 const SCREEN_RATIO = 0.60,
       SCREEN_WIDTH = 500,
@@ -9,9 +9,10 @@ const SCREEN_RATIO = 0.60,
 
 let win,
     tray,
-    bigMode = false;
+    bigMode = false,
+    menu;
 
-const uri = 'https://www.instagram.com/';
+const uri = 'https://www.instagram.com';
 
 function sendCommandToDebugger(name, params = {}, callback) {
     win.webContents.debugger.sendCommand(name, params, (error, result) => {
@@ -64,17 +65,22 @@ function getScreenHeight() {
 
 function updateScreenSizing() {
     win.webContents.setZoomFactor(getZoomFactor());
-    win.setSize(getScreenWidth(), getScreenHeight(), true);
+    win.setSize(getScreenWidth(), getScreenHeight());
+
+    const pos = getWindowPosition();
+    win.setPosition(pos.x, pos.y);
 }
 
 function getWindowOptions() {
     return {
         title: APP_NAME,
-        icon: './icon.ico',
+        icon: __dirname + '/assets/icon.png',
         width: getScreenWidth(),
         height: getScreenHeight(),
+        frame: false,
         resizable: false,
         show: false,
+        alwaysOnTop: true,
         webPreferences: {
             nodeIntegration: false,
         }
@@ -86,24 +92,74 @@ function onBigModeToggleClick(menuItem, browserWindow, event) {
     updateScreenSizing();
 }
 
+function onQuitClick() {
+    app.isQuiting = true;
+    app.quit();
+}
+
 function createMainMenu() {
     return Menu.buildFromTemplate([
         {label: 'Big Mode', type: 'checkbox', click: onBigModeToggleClick},
         {type: "separator"},
-        {role: "quit", label: `Quit ${APP_NAME}`},
+        {label: `Quit ${APP_NAME}`, click: onQuitClick},
     ]);
 }
 
+function getTrayIcon() {
+    let image = nativeImage.createFromPath(__dirname + '/assets/icon-tray.png');
+
+    image.setTemplateImage(true);
+
+    return image;
+}
+
 function createTray() {
-    tray = new Tray('./tray.jpg');
+    let tray = new Tray(getTrayIcon());
 
     tray.setToolTip(APP_NAME);
-    tray.setContextMenu(createMainMenu());
+
+    tray.on('click', toggleWindowShown);
+    tray.on('double-click', showWindow);
+
+    tray.on('right-click', () => {
+        tray.popUpContextMenu(menu);
+    });
+
+    return tray;
+}
+
+function getWindowPosition() {
+    const wb = win.getBounds();
+    const tb = tray.getBounds();
+
+    return {
+        x: Math.round(tb.x + tb.width / 2 - wb.width / 2),
+        y: Math.round(tb.y + tb.height + 10),
+    };
+}
+
+function showWindow() {
+    const p = getWindowPosition();
+
+    win.setPosition(p.x, p.y);
+    win.show();
+}
+
+function toggleWindowShown() {
+    if (win.isVisible()) {
+        win.hide();
+    } else {
+        showWindow();
+    }
 }
 
 function createWindow () {
     win = new BrowserWindow(getWindowOptions());
     win.setMenu(null);
+    win.setSkipTaskbar(true);
+
+    menu = createMainMenu();
+    tray = createTray();
 
     enableMobile();
 
@@ -111,23 +167,30 @@ function createWindow () {
         userAgent: USER_AGENT
     });
 
-    win.on('closed', () => {
-        win = null;
+    win.on('minimize',function(event){
+        event.preventDefault();
+        win.hide();
     });
 
-    win.once('ready-to-show', () => {
-        win.webContents.setZoomFactor(getZoomFactor());
-        win.show()
+    win.on('close', function (event) {
+        if (!app.isQuiting){
+            event.preventDefault();
+            win.hide();
+        }
+
+        return false;
     });
 
     win.webContents.on('dom-ready', function(e) {
-        // win.webContents.executeJavaScript('alert("dupa");');
         win.webContents.insertCSS('* { outline: none !important; }');
+        win.webContents.setZoomFactor(getZoomFactor());
     });
 
-    createTray();
+    win.on('page-title-updated', (evt) => {
+        evt.preventDefault();
+    });
 }
 
 app.on('ready', createWindow);
 app.on('activate', () => { if (null === win) { createWindow(); } });
-app.on('window-all-closed', () => { app.quit() });
+// app.on('window-all-closed', () => { app.quit() });
